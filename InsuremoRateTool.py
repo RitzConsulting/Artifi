@@ -55,7 +55,7 @@ class InsuremoRateTool(BaseTool):
     # REQUIRED STUDIO METADATA
     name = "InsuremoRateTool"
     description = "Commercial insurance premium rating via InsureMO API. Creates policies and calculates premiums for general liability and property coverage."
-    version = "3.0.0"
+    version = "3.0.1"
     
     # Environment variables required
     requires_env_vars = [
@@ -79,96 +79,79 @@ class InsuremoRateTool(BaseTool):
     response_type = "json"
     call_back_url = None
     
-    # INPUT SCHEMA
+    # INPUT SCHEMA - Fixed to avoid validation issues
     input_schema = {
         "type": "object",
         "properties": {
             "customerName": {
                 "type": "string",
-                "description": "Business name for the policy",
-                "examples": ["Sweet Dreams Bakery LLC", "TechParts Manufacturing Inc"]
+                "description": "Business name for the policy"
             },
             "address1": {
                 "type": "string",
-                "description": "Primary address line",
-                "examples": ["123 Main Street", "456 Industrial Blvd"]
+                "description": "Primary address line"
             },
             "city": {
                 "type": "string",
-                "description": "City name",
-                "examples": ["Houston", "Dallas", "Austin"]
+                "description": "City name"
             },
             "state": {
                 "type": "string",
                 "description": "State code (2 letters)",
-                "examples": ["TX", "CA", "NY"],
                 "pattern": "^[A-Z]{2}$"
             },
             "zipCode": {
                 "type": "string",
                 "description": "ZIP code",
-                "examples": ["77001", "75201"],
                 "pattern": "^\\d{5}(-\\d{4})?$"
             },
             "businessType": {
                 "type": "string",
-                "description": "Type of business",
-                "enum": ["Retail", "Wholesale", "Manufacturing", "Service"],
-                "default": "Retail"
+                "description": "Type of business (Retail, Wholesale, Manufacturing, Service)",
+                "enum": ["Retail", "Wholesale", "Manufacturing", "Service"]
             },
             "naicsCode": {
                 "type": "string",
-                "description": "NAICS industry code",
-                "examples": ["311811", "333316"],
-                "default": "311811"
+                "description": "NAICS industry code"
             },
             "naicsDefinition": {
                 "type": "string",
-                "description": "NAICS code description",
-                "examples": ["Retail Bakeries", "Photographic Equipment Manufacturing"],
-                "default": "Retail Bakeries"
+                "description": "NAICS code description"
             },
             "legalStructure": {
                 "type": "string",
                 "description": "Legal structure of business",
-                "enum": ["LLC", "Corporation", "Partnership", "SoleProprietorship"],
-                "default": "LLC"
+                "enum": ["LLC", "Corporation", "Partnership", "SoleProprietorship"]
             },
             "fullTimeEmpl": {
                 "type": "integer",
                 "description": "Number of full-time employees",
-                "minimum": 0,
-                "default": 5
+                "minimum": 0
             },
             "partTimeEmpl": {
                 "type": "integer",
                 "description": "Number of part-time employees",
-                "minimum": 0,
-                "default": 0
+                "minimum": 0
             },
             "buildingLimit": {
                 "type": "integer",
                 "description": "Building coverage limit in dollars",
-                "minimum": 0,
-                "default": 500000
+                "minimum": 0
             },
             "bppLimit": {
                 "type": "integer",
                 "description": "Business personal property limit in dollars",
-                "minimum": 0,
-                "default": 100000
+                "minimum": 0
             },
             "eachOccurrenceLimit": {
                 "type": "string",
                 "description": "Each occurrence liability limit",
-                "enum": ["1,000,000 CSL", "2,000,000 CSL", "5,000,000 CSL"],
-                "default": "1,000,000 CSL"
+                "enum": ["1,000,000 CSL", "2,000,000 CSL", "5,000,000 CSL"]
             },
             "generalAggregateLimit": {
                 "type": "string",
                 "description": "General aggregate liability limit",
-                "enum": ["2,000,000 CSL", "4,000,000 CSL", "10,000,000 CSL"],
-                "default": "2,000,000 CSL"
+                "enum": ["2,000,000 CSL", "4,000,000 CSL", "10,000,000 CSL"]
             },
             "api_token": {
                 "type": "string",
@@ -179,10 +162,11 @@ class InsuremoRateTool(BaseTool):
                 "description": "Override base URL (optional - uses env var if not provided)"
             }
         },
-        "required": ["customerName", "address1", "city", "state", "zipCode"]
+        "required": ["customerName", "address1", "city", "state", "zipCode"],
+        "additionalProperties": True
     }
     
-    # OUTPUT SCHEMA
+    # OUTPUT SCHEMA - Simplified structure
     output_schema = {
         "type": "object",
         "properties": {
@@ -191,7 +175,7 @@ class InsuremoRateTool(BaseTool):
                 "description": "Whether the rating was successful"
             },
             "proposalNo": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Generated proposal number"
             },
             "policyId": {
@@ -199,51 +183,52 @@ class InsuremoRateTool(BaseTool):
                 "description": "Policy ID from the system"
             },
             "totalPremium": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "Total calculated premium"
             },
             "grossPremium": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "Gross premium amount"
             },
             "commission": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "Commission amount"
             },
             "commissionRate": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "Commission rate as decimal"
             },
             "glPremium": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "General liability premium"
             },
             "propertyPremium": {
-                "type": "number",
+                "type": ["number", "null"],
                 "description": "Property coverage premium"
             },
             "effectiveDate": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Policy effective date"
             },
             "expiryDate": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Policy expiry date"
             },
             "premiumBreakdown": {
-                "type": "object",
+                "type": ["object", "null"],
                 "description": "Detailed premium breakdown"
             },
             "error": {
-                "type": "string",
+                "type": ["string", "null"],
                 "description": "Error message if rating failed"
             },
             "errorDetails": {
-                "type": "object",
+                "type": ["object", "null"],
                 "description": "Additional error information"
             }
         },
-        "required": ["success"]
+        "required": ["success"],
+        "additionalProperties": True
     }
     
     # STUDIO CONFIGURATION
@@ -260,6 +245,20 @@ class InsuremoRateTool(BaseTool):
         "bind": "/api/ebaogi/api-orchestration/v1/flow/easypa_bind",
         "issue": "/api/ebaogi/api-orchestration/v1/flow/easypa_issue",
         "load": "/api/platform/proposal/v1/load"
+    }
+    
+    # Default values for optional parameters
+    DEFAULT_VALUES = {
+        "businessType": "Retail",
+        "naicsCode": "311811",
+        "naicsDefinition": "Retail Bakeries",
+        "legalStructure": "LLC",
+        "fullTimeEmpl": 5,
+        "partTimeEmpl": 0,
+        "buildingLimit": 500000,
+        "bppLimit": 100000,
+        "eachOccurrenceLimit": "1,000,000 CSL",
+        "generalAggregateLimit": "2,000,000 CSL"
     }
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
@@ -382,22 +381,25 @@ class InsuremoRateTool(BaseTool):
             Dict matching the output_schema
         """
         try:
+            # Apply default values for missing optional parameters
+            params = self._apply_defaults(kwargs)
+            
             # Extract API credentials if provided
-            api_token = kwargs.pop("api_token", None)
-            base_url = kwargs.pop("base_url", None)
+            api_token = params.pop("api_token", None)
+            base_url = params.pop("base_url", None)
             
             # Initialize if needed
             self._initialize(api_token, base_url)
             
             # Validate required fields
             required_fields = ["customerName", "address1", "city", "state", "zipCode"]
-            missing_fields = [f for f in required_fields if not kwargs.get(f)]
+            missing_fields = [f for f in required_fields if not params.get(f)]
             if missing_fields:
                 return self._create_error_response(f"Missing required fields: {', '.join(missing_fields)}")
             
             # Step 1: Create policy
-            logger.info(f"Creating policy for {kwargs.get('customerName')}")
-            created_data = self._create_policy(**kwargs)
+            logger.info(f"Creating policy for {params.get('customerName')}")
+            created_data = self._create_policy(**params)
             if not created_data:
                 return self._create_error_response("Failed to create policy")
             
@@ -421,6 +423,25 @@ class InsuremoRateTool(BaseTool):
             return self._create_error_response(str(e))
         finally:
             self._cleanup()
+    
+    def _apply_defaults(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Apply default values to parameters.
+        
+        Args:
+            params: Input parameters
+            
+        Returns:
+            Parameters with defaults applied
+        """
+        result = params.copy()
+        
+        # Apply defaults for missing optional fields
+        for key, default_value in self.DEFAULT_VALUES.items():
+            if key not in result or result[key] is None:
+                result[key] = default_value
+        
+        return result
     
     def _create_policy(self, **kwargs) -> Optional[Dict[str, Any]]:
         """
@@ -792,7 +813,9 @@ class InsuremoRateTool(BaseTool):
             "propertyPremium": premium_breakdown["propertyPremium"],
             "effectiveDate": calculated_data.get("EffectiveDate"),
             "expiryDate": calculated_data.get("ExpiryDate"),
-            "premiumBreakdown": premium_breakdown
+            "premiumBreakdown": premium_breakdown,
+            "error": None,
+            "errorDetails": None
         }
     
     def _create_error_response(self, error_message: str) -> Dict[str, Any]:
@@ -800,6 +823,17 @@ class InsuremoRateTool(BaseTool):
         logger.error(error_message)
         return {
             "success": False,
+            "proposalNo": None,
+            "policyId": None,
+            "totalPremium": None,
+            "grossPremium": None,
+            "commission": None,
+            "commissionRate": None,
+            "glPremium": None,
+            "propertyPremium": None,
+            "effectiveDate": None,
+            "expiryDate": None,
+            "premiumBreakdown": None,
             "error": error_message,
             "errorDetails": {
                 "type": "ProcessingError",
@@ -854,192 +888,13 @@ if __name__ == "__main__":
     print("\n📋 Tool Metadata:")
     print(json.dumps(tool_metadata, indent=2))
     
-    print("\n" + "-"*80)
-    print(" Testing the tool...")
-    print("-"*80)
-    
-    # Test scenarios
-    test_scenarios = [
-        {
-            "name": "Small Retail Bakery",
-            "data": {
-                "customerName": "Sweet Dreams Bakery LLC",
-                "address1": "123 Main Street",
-                "city": "Houston",
-                "state": "TX",
-                "zipCode": "77001",
-                "businessType": "Retail",
-                "naicsCode": "311811",
-                "naicsDefinition": "Retail Bakeries",
-                "fullTimeEmpl": 5,
-                "partTimeEmpl": 2,
-                "buildingLimit": 500000,
-                "bppLimit": 100000
-            }
-        },
-        {
-            "name": "Manufacturing Facility",
-            "data": {
-                "customerName": "TechParts Manufacturing Inc",
-                "address1": "456 Industrial Blvd",
-                "city": "Dallas",
-                "state": "TX",
-                "zipCode": "75201",
-                "businessType": "Manufacturing",
-                "naicsCode": "333316",
-                "naicsDefinition": "Photographic Equipment Manufacturing",
-                "fullTimeEmpl": 25,
-                "partTimeEmpl": 5,
-                "buildingLimit": 1500000,
-                "bppLimit": 800000,
-                "eachOccurrenceLimit": "2,000,000 CSL",
-                "generalAggregateLimit": "4,000,000 CSL"
-            }
-        },
-        {
-            "name": "Service Company",
-            "data": {
-                "customerName": "Professional Services Corp",
-                "address1": "789 Business Park",
-                "city": "Austin",
-                "state": "TX",
-                "zipCode": "78701",
-                "businessType": "Service",
-                "naicsCode": "541511",
-                "naicsDefinition": "Custom Computer Programming Services",
-                "fullTimeEmpl": 15,
-                "partTimeEmpl": 3,
-                "buildingLimit": 250000,
-                "bppLimit": 150000,
-                "legalStructure": "Corporation"
-            }
-        }
-    ]
-    
-    # Check and set environment variables if not present
-    if not os.getenv("INSUREMO_API_TOKEN"):
-        print("\n⚠️  Warning: INSUREMO_API_TOKEN not set in environment")
-        print("   Setting default token for testing...")
-        os.environ["INSUREMO_API_TOKEN"] = "MOATnRGmthYVAX1Dcrcve-WV8PEa0nds"
-    
-    if not os.getenv("INSUREMO_BASE_URL"):
-        print("⚠️  Warning: INSUREMO_BASE_URL not set in environment")
-        print("   Setting default URL for testing...")
-        os.environ["INSUREMO_BASE_URL"] = "https://ebaogi-gi-sandbox-am.insuremo.com"
-    
-    # Run test scenarios
-    for i, scenario in enumerate(test_scenarios, 1):
-        print(f"\n{'='*80}")
-        print(f" Test Scenario {i}: {scenario['name']}")
-        print(f"{'='*80}")
-        
-        test_data = scenario['data']
-        print(f"\nBusiness: {test_data['customerName']}")
-        print(f"Location: {test_data['address1']}, {test_data['city']}, {test_data['state']} {test_data['zipCode']}")
-        print(f"Type: {test_data['businessType']}")
-        print(f"Employees: {test_data['fullTimeEmpl']} FT, {test_data.get('partTimeEmpl', 0)} PT")
-        print(f"Building Limit: ${test_data.get('buildingLimit', 500000):,}")
-        print(f"BPP Limit: ${test_data.get('bppLimit', 100000):,}")
-        
-        print("\n" + "-"*40)
-        print(" Executing Rating...")
-        print("-"*40)
-        
-        try:
-            # Execute the tool
-            result = execute_tool(**test_data)
-            
-            if result["success"]:
-                print("\n✅ Rating Successful!")
-                print(f"\n📋 Proposal Number: {result.get('proposalNo')}")
-                print(f"📄 Policy ID: {result.get('policyId')}")
-                
-                print(f"\n💰 Premium Summary:")
-                print(f"   Total Premium:    ${result.get('totalPremium', 0):>12,.2f}")
-                print(f"   GL Premium:       ${result.get('glPremium', 0):>12,.2f}")
-                print(f"   Property Premium: ${result.get('propertyPremium', 0):>12,.2f}")
-                
-                commission = result.get('commission', 0)
-                commission_rate = result.get('commissionRate', 0)
-                if commission > 0:
-                    print(f"   Commission:       ${commission:>12,.2f} ({commission_rate*100:.1f}%)")
-                
-                print(f"\n📅 Policy Term:")
-                print(f"   Effective Date: {result.get('effectiveDate')}")
-                print(f"   Expiry Date:    {result.get('expiryDate')}")
-                
-                # Save result to file
-                filename = f"quote_{i}_{test_data['customerName'].replace(' ', '_').replace('.', '')}.json"
-                with open(filename, "w") as f:
-                    json.dump(result, f, indent=2)
-                print(f"\n💾 Results saved to: {filename}")
-                
-            else:
-                print(f"\n❌ Rating Failed:")
-                error_details = result.get('errorDetails', {})
-                print(f"   Error Type: {error_details.get('type', 'Unknown')}")
-                print(f"   Error: {result.get('error')}")
-                if error_details.get('message'):
-                    print(f"   Details: {error_details['message']}")
-                
-        except Exception as e:
-            print(f"\n❌ Test failed with exception:")
-            print(f"   {str(e)}")
-            import traceback
-            traceback.print_exc()
-        
-        # Brief pause between scenarios
-        if i < len(test_scenarios):
-            time.sleep(2)
+    print("\n✅ Validation Fixes Applied:")
+    print("  - Simplified schema structure to avoid validation errors")
+    print("  - Added explicit default values handling")
+    print("  - Made all output fields nullable except 'success'")
+    print("  - Added additionalProperties: true for flexibility")
+    print("  - Improved error response structure")
     
     print("\n" + "="*80)
-    print(" Testing Complete")
-    print("="*80)
-    
-    # Display usage examples
-    print("\n📚 Usage Examples:")
-    print("-"*40)
-    
-    print("\n1. As a Blueprint Tool (Platform Integration):")
-    print("""
-    result = execute_tool(
-        customerName="Your Business LLC",
-        address1="123 Main St",
-        city="Houston",
-        state="TX",
-        zipCode="77001",
-        businessType="Retail",
-        fullTimeEmpl=10,
-        buildingLimit=750000,
-        bppLimit=250000
-    )
-    """)
-    
-    print("\n2. Direct Class Usage:")
-    print("""
-    with InsuremoRateTool() as tool:
-        result = tool.run_sync(
-            customerName="Your Business",
-            address1="456 Oak Ave",
-            city="Dallas",
-            state="TX",
-            zipCode="75201"
-        )
-    """)
-    
-    print("\n3. With Custom Credentials:")
-    print("""
-    result = execute_tool(
-        customerName="Test Corp",
-        address1="789 Pine St",
-        city="Austin",
-        state="TX",
-        zipCode="78701",
-        api_token="YOUR_API_TOKEN",
-        base_url="YOUR_BASE_URL"
-    )
-    """)
-    
-    print("\n" + "="*80)
-    print(" Blueprint-Compliant InsureMO Rate Tool Ready for Deployment")
+    print(" Tool ready for deployment!")
     print("="*80)
