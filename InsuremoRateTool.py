@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Blueprint-Compliant InsureMO Rate Tool
+Blueprint-Compliant InsureMO Rate Tool - Agent-Optimized Version
 Commercial Insurance Premium Rating via InsureMO API
 
 This tool provides simplified premium rating for commercial insurance policies
-through the InsureMO platform, following the Blueprint framework standards.
+through the InsureMO platform, optimized for AI Agent integration.
 
-Design Principles:
-- Blueprint-compliant structure with proper inheritance from BaseTool
-- Comprehensive error handling and logging
-- Support for both standalone and integrated usage
-- Structured input/output schemas for agent compatibility
+Key Modifications:
+- Enhanced JSON input validation and parsing
+- Improved error messages for agent consumption
+- Added input sanitization for agent-provided data
+- Streamlined response format for agent summarization
 """
 
 import json
@@ -44,18 +44,18 @@ logger = logging.getLogger(__name__)
 
 class InsuremoRateTool(BaseTool):
     """
-    Blueprint-compliant tool for commercial insurance premium rating via InsureMO API.
+    Agent-Optimized InsureMO Premium Rating Tool.
     
-    This tool handles the complete rating workflow:
-    1. Creates a policy with provided business information
-    2. Calculates premium based on risk factors
-    3. Returns comprehensive rating results
+    Designed for seamless AI Agent integration with:
+    - Robust JSON input parsing from agents
+    - Clear, structured responses for agent summarization
+    - Enhanced error handling with agent-friendly messages
     """
     
     # REQUIRED STUDIO METADATA
     name = "InsuremoRateTool"
     description = "Commercial insurance premium rating via InsureMO API. Creates policies and calculates premiums for general liability and property coverage."
-    version = "3.0.1"
+    version = "3.1.0"
     
     # Environment variables required
     requires_env_vars = [
@@ -69,17 +69,17 @@ class InsuremoRateTool(BaseTool):
         ("urllib3", "urllib3")
     ]
     
-    # Tool configuration
+    # Tool configuration - Optimized for Agent interaction
     uses_llm = False
     default_llm_model = None
     default_system_instructions = None
     structured_output = True
     direct_to_user = False
-    respond_back_to_agent = True
+    respond_back_to_agent = True  # Key setting for agent response
     response_type = "json"
     call_back_url = None
     
-    # INPUT SCHEMA - Fixed to avoid validation issues
+    # INPUT SCHEMA - Agent-friendly with clear descriptions
     input_schema = {
         "type": "object",
         "properties": {
@@ -97,82 +97,88 @@ class InsuremoRateTool(BaseTool):
             },
             "state": {
                 "type": "string",
-                "description": "State code (2 letters)",
+                "description": "State code (2 letters, e.g., CA, TX)",
                 "pattern": "^[A-Z]{2}$"
             },
             "zipCode": {
                 "type": "string",
-                "description": "ZIP code",
+                "description": "ZIP code (5 or 9 digits)",
                 "pattern": "^\\d{5}(-\\d{4})?$"
             },
             "businessType": {
                 "type": "string",
-                "description": "Type of business (Retail, Wholesale, Manufacturing, Service)",
-                "enum": ["Retail", "Wholesale", "Manufacturing", "Service"]
+                "description": "Type of business",
+                "enum": ["Retail", "Wholesale", "Manufacturing", "Service"],
+                "default": "Retail"
             },
             "naicsCode": {
                 "type": "string",
-                "description": "NAICS industry code"
+                "description": "NAICS industry code",
+                "default": "311811"
             },
             "naicsDefinition": {
                 "type": "string",
-                "description": "NAICS code description"
+                "description": "NAICS code description",
+                "default": "Retail Bakeries"
             },
             "legalStructure": {
                 "type": "string",
                 "description": "Legal structure of business",
-                "enum": ["LLC", "Corporation", "Partnership", "SoleProprietorship"]
+                "enum": ["LLC", "Corporation", "Partnership", "SoleProprietorship"],
+                "default": "LLC"
             },
             "fullTimeEmpl": {
                 "type": "integer",
                 "description": "Number of full-time employees",
-                "minimum": 0
+                "minimum": 0,
+                "default": 5
             },
             "partTimeEmpl": {
                 "type": "integer",
                 "description": "Number of part-time employees",
-                "minimum": 0
+                "minimum": 0,
+                "default": 0
             },
             "buildingLimit": {
                 "type": "integer",
                 "description": "Building coverage limit in dollars",
-                "minimum": 0
+                "minimum": 0,
+                "default": 500000
             },
             "bppLimit": {
                 "type": "integer",
                 "description": "Business personal property limit in dollars",
-                "minimum": 0
+                "minimum": 0,
+                "default": 100000
             },
             "eachOccurrenceLimit": {
                 "type": "string",
                 "description": "Each occurrence liability limit",
-                "enum": ["1,000,000 CSL", "2,000,000 CSL", "5,000,000 CSL"]
+                "enum": ["1,000,000 CSL", "2,000,000 CSL", "5,000,000 CSL"],
+                "default": "1,000,000 CSL"
             },
             "generalAggregateLimit": {
                 "type": "string",
                 "description": "General aggregate liability limit",
-                "enum": ["2,000,000 CSL", "4,000,000 CSL", "10,000,000 CSL"]
-            },
-            "api_token": {
-                "type": "string",
-                "description": "Override API token (optional - uses env var if not provided)"
-            },
-            "base_url": {
-                "type": "string",
-                "description": "Override base URL (optional - uses env var if not provided)"
+                "enum": ["2,000,000 CSL", "4,000,000 CSL", "10,000,000 CSL"],
+                "default": "2,000,000 CSL"
             }
         },
         "required": ["customerName", "address1", "city", "state", "zipCode"],
         "additionalProperties": True
     }
     
-    # OUTPUT SCHEMA - Simplified structure
+    # OUTPUT SCHEMA - Streamlined for agent summarization
     output_schema = {
         "type": "object",
         "properties": {
             "success": {
                 "type": "boolean",
                 "description": "Whether the rating was successful"
+            },
+            "summary": {
+                "type": ["string", "null"],
+                "description": "Human-readable summary for the agent"
             },
             "proposalNo": {
                 "type": ["string", "null"],
@@ -182,49 +188,32 @@ class InsuremoRateTool(BaseTool):
                 "type": ["integer", "null"],
                 "description": "Policy ID from the system"
             },
-            "totalPremium": {
-                "type": ["number", "null"],
-                "description": "Total calculated premium"
-            },
-            "grossPremium": {
-                "type": ["number", "null"],
-                "description": "Gross premium amount"
-            },
-            "commission": {
-                "type": ["number", "null"],
-                "description": "Commission amount"
-            },
-            "commissionRate": {
-                "type": ["number", "null"],
-                "description": "Commission rate as decimal"
-            },
-            "glPremium": {
-                "type": ["number", "null"],
-                "description": "General liability premium"
-            },
-            "propertyPremium": {
-                "type": ["number", "null"],
-                "description": "Property coverage premium"
-            },
-            "effectiveDate": {
-                "type": ["string", "null"],
-                "description": "Policy effective date"
-            },
-            "expiryDate": {
-                "type": ["string", "null"],
-                "description": "Policy expiry date"
-            },
-            "premiumBreakdown": {
+            "premiums": {
                 "type": ["object", "null"],
-                "description": "Detailed premium breakdown"
+                "properties": {
+                    "total": {"type": "number"},
+                    "gross": {"type": "number"},
+                    "generalLiability": {"type": "number"},
+                    "property": {"type": "number"},
+                    "commission": {"type": "number"},
+                    "commissionRate": {"type": "number"}
+                }
+            },
+            "coverage": {
+                "type": ["object", "null"],
+                "properties": {
+                    "effectiveDate": {"type": "string"},
+                    "expiryDate": {"type": "string"},
+                    "term": {"type": "string"}
+                }
             },
             "error": {
                 "type": ["string", "null"],
                 "description": "Error message if rating failed"
             },
-            "errorDetails": {
-                "type": ["object", "null"],
-                "description": "Additional error information"
+            "agentInstructions": {
+                "type": ["string", "null"],
+                "description": "Instructions for the agent on how to use the response"
             }
         },
         "required": ["success"],
@@ -262,15 +251,9 @@ class InsuremoRateTool(BaseTool):
     }
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        Initialize the InsureMO Rate Tool.
-        
-        Args:
-            config: Optional configuration dictionary
-        """
+        """Initialize the InsureMO Rate Tool."""
         super().__init__()
         
-        # Override config if provided
         if config:
             self.config.update(config)
         
@@ -303,13 +286,7 @@ class InsuremoRateTool(BaseTool):
                 self._initialized = False
     
     def _initialize(self, api_token: Optional[str] = None, base_url: Optional[str] = None):
-        """
-        Initialize API connection and session.
-        
-        Args:
-            api_token: Optional API token override
-            base_url: Optional base URL override
-        """
+        """Initialize API connection and session."""
         if self._initialized:
             return
         
@@ -339,7 +316,7 @@ class InsuremoRateTool(BaseTool):
         
         session = requests.Session()
         
-        # Create retry strategy with compatibility for different urllib3 versions
+        # Create retry strategy
         retry_kwargs = {
             'total': self.config['max_retries'],
             'status_forcelist': [429, 500, 502, 503, 504],
@@ -370,19 +347,74 @@ class InsuremoRateTool(BaseTool):
         
         return session
     
-    def run_sync(self, **kwargs) -> Dict[str, Any]:
+    def parse_agent_input(self, input_data: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Main execution method for premium rating.
+        Parse and validate input from AI Agent.
         
         Args:
-            **kwargs: Parameters matching the input_schema
+            input_data: JSON string or dict from agent
             
         Returns:
-            Dict matching the output_schema
+            Validated and normalized input dict
+        """
+        # Handle JSON string input
+        if isinstance(input_data, str):
+            try:
+                input_data = json.loads(input_data)
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON input from agent: {e}")
+                raise ValueError(f"Invalid JSON format: {e}")
+        
+        # Sanitize and normalize input
+        sanitized = {}
+        for key, value in input_data.items():
+            # Remove any leading/trailing whitespace from strings
+            if isinstance(value, str):
+                value = value.strip()
+            
+            # Normalize state codes to uppercase
+            if key == "state" and isinstance(value, str):
+                value = value.upper()
+            
+            # Ensure employee counts are integers
+            if key in ["fullTimeEmpl", "partTimeEmpl"] and value is not None:
+                try:
+                    value = int(value)
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid {key} value: {value}, using default")
+                    value = self.DEFAULT_VALUES.get(key, 0)
+            
+            # Ensure coverage limits are integers
+            if key in ["buildingLimit", "bppLimit"] and value is not None:
+                try:
+                    value = int(value)
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid {key} value: {value}, using default")
+                    value = self.DEFAULT_VALUES.get(key, 0)
+            
+            sanitized[key] = value
+        
+        return sanitized
+    
+    def run_sync(self, **kwargs) -> Dict[str, Any]:
+        """
+        Main execution method for premium rating - Agent optimized.
+        
+        Args:
+            **kwargs: Parameters from AI Agent (can include raw JSON)
+            
+        Returns:
+            Agent-friendly JSON response with summary and structured data
         """
         try:
+            # Handle direct JSON input from agent
+            if "input" in kwargs and isinstance(kwargs["input"], (str, dict)):
+                params = self.parse_agent_input(kwargs["input"])
+            else:
+                params = self.parse_agent_input(kwargs)
+            
             # Apply default values for missing optional parameters
-            params = self._apply_defaults(kwargs)
+            params = self._apply_defaults(params)
             
             # Extract API credentials if provided
             api_token = params.pop("api_token", None)
@@ -395,17 +427,26 @@ class InsuremoRateTool(BaseTool):
             required_fields = ["customerName", "address1", "city", "state", "zipCode"]
             missing_fields = [f for f in required_fields if not params.get(f)]
             if missing_fields:
-                return self._create_error_response(f"Missing required fields: {', '.join(missing_fields)}")
+                return self._create_agent_error_response(
+                    f"Missing required fields: {', '.join(missing_fields)}",
+                    missing_fields
+                )
             
             # Step 1: Create policy
             logger.info(f"Creating policy for {params.get('customerName')}")
             created_data = self._create_policy(**params)
             if not created_data:
-                return self._create_error_response("Failed to create policy")
+                return self._create_agent_error_response(
+                    "Failed to create policy in InsureMO system",
+                    context="Policy creation step"
+                )
             
             proposal_no = created_data.get("ProposalNo")
             if not proposal_no:
-                return self._create_error_response("No proposal number returned from create API")
+                return self._create_agent_error_response(
+                    "No proposal number returned from InsureMO",
+                    context="Policy creation response"
+                )
             
             logger.info(f"Policy created with proposal number: {proposal_no}")
             
@@ -413,27 +454,25 @@ class InsuremoRateTool(BaseTool):
             logger.info("Calculating premium...")
             calculated_data = self._calculate_premium(created_data)
             if not calculated_data:
-                return self._create_error_response("Failed to calculate premium")
+                return self._create_agent_error_response(
+                    "Failed to calculate premium",
+                    context="Premium calculation step"
+                )
             
-            # Extract and return results
-            return self._create_success_response(calculated_data)
+            # Extract and return agent-optimized results
+            return self._create_agent_success_response(calculated_data, params)
             
         except Exception as e:
             logger.error(f"Rate tool execution failed: {str(e)}", exc_info=True)
-            return self._create_error_response(str(e))
+            return self._create_agent_error_response(
+                str(e),
+                context="Unexpected error during processing"
+            )
         finally:
             self._cleanup()
     
     def _apply_defaults(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Apply default values to parameters.
-        
-        Args:
-            params: Input parameters
-            
-        Returns:
-            Parameters with defaults applied
-        """
+        """Apply default values to parameters."""
         result = params.copy()
         
         # Apply defaults for missing optional fields
@@ -444,15 +483,7 @@ class InsuremoRateTool(BaseTool):
         return result
     
     def _create_policy(self, **kwargs) -> Optional[Dict[str, Any]]:
-        """
-        Create a policy with the InsureMO API.
-        
-        Args:
-            **kwargs: Business information for the policy
-            
-        Returns:
-            Created policy data or None if failed
-        """
+        """Create a policy with the InsureMO API."""
         try:
             payload = self._build_policy_payload(**kwargs)
             url = f"{self.base_url}{self.ENDPOINTS['create']}"
@@ -474,15 +505,7 @@ class InsuremoRateTool(BaseTool):
             return None
     
     def _calculate_premium(self, policy_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        Calculate premium for a created policy.
-        
-        Args:
-            policy_data: The policy data from create API
-            
-        Returns:
-            Calculated policy data or None if failed
-        """
+        """Calculate premium for a created policy."""
         try:
             url = f"{self.base_url}{self.ENDPOINTS['calculate']}"
             
@@ -503,15 +526,7 @@ class InsuremoRateTool(BaseTool):
             return None
     
     def _build_policy_payload(self, **kwargs) -> Dict[str, Any]:
-        """
-        Build the complete policy payload with defaults.
-        
-        Args:
-            **kwargs: Business information
-            
-        Returns:
-            Complete policy payload for API
-        """
+        """Build the complete policy payload with defaults."""
         dates = self._get_default_dates()
         
         # Build payload - using same structure as original tool
@@ -797,48 +812,94 @@ class InsuremoRateTool(BaseTool):
         
         return breakdown
     
-    def _create_success_response(self, calculated_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create standardized success response."""
+    def _create_agent_success_response(self, calculated_data: Dict[str, Any], input_params: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create agent-optimized success response with summary.
+        
+        Args:
+            calculated_data: Calculated policy data from API
+            input_params: Original input parameters for context
+            
+        Returns:
+            Agent-friendly response with summary
+        """
         premium_breakdown = self._extract_premium_breakdown(calculated_data)
+        
+        # Format currency values
+        def format_currency(amount):
+            return f"${amount:,.2f}" if amount else "$0.00"
+        
+        # Create human-readable summary for agent
+        summary_parts = [
+            f"Successfully rated commercial insurance for {input_params.get('customerName')}.",
+            f"Proposal #{calculated_data.get('ProposalNo')} created.",
+            f"Total Annual Premium: {format_currency(calculated_data.get('TotalPremium', 0))}",
+            f"Coverage Period: {calculated_data.get('EffectiveDate', 'Today')} to {calculated_data.get('ExpiryDate', 'One year')}",
+        ]
+        
+        if premium_breakdown['glPremium'] > 0:
+            summary_parts.append(f"General Liability: {format_currency(premium_breakdown['glPremium'])}")
+        if premium_breakdown['propertyPremium'] > 0:
+            summary_parts.append(f"Property Coverage: {format_currency(premium_breakdown['propertyPremium'])}")
+        
+        summary = " ".join(summary_parts)
         
         return {
             "success": True,
+            "summary": summary,
             "proposalNo": calculated_data.get("ProposalNo"),
             "policyId": calculated_data.get("PolicyId"),
-            "totalPremium": calculated_data.get("TotalPremium", 0),
-            "grossPremium": calculated_data.get("GrossPremium", 0),
-            "commission": calculated_data.get("Commission", 0),
-            "commissionRate": calculated_data.get("CommissionRate", 0),
-            "glPremium": premium_breakdown["glPremium"],
-            "propertyPremium": premium_breakdown["propertyPremium"],
-            "effectiveDate": calculated_data.get("EffectiveDate"),
-            "expiryDate": calculated_data.get("ExpiryDate"),
-            "premiumBreakdown": premium_breakdown,
+            "premiums": {
+                "total": calculated_data.get("TotalPremium", 0),
+                "gross": calculated_data.get("GrossPremium", 0),
+                "generalLiability": premium_breakdown["glPremium"],
+                "property": premium_breakdown["propertyPremium"],
+                "commission": calculated_data.get("Commission", 0),
+                "commissionRate": calculated_data.get("CommissionRate", 0)
+            },
+            "coverage": {
+                "effectiveDate": calculated_data.get("EffectiveDate"),
+                "expiryDate": calculated_data.get("ExpiryDate"),
+                "term": "Annual"
+            },
             "error": None,
-            "errorDetails": None
+            "agentInstructions": "Use the 'summary' field for customer communication. The 'premiums' object contains detailed breakdown for quote presentation."
         }
     
-    def _create_error_response(self, error_message: str) -> Dict[str, Any]:
-        """Create standardized error response."""
-        logger.error(error_message)
+    def _create_agent_error_response(self, error_message: str, context: Any = None) -> Dict[str, Any]:
+        """
+        Create agent-friendly error response.
+        
+        Args:
+            error_message: Error message
+            context: Additional context for debugging
+            
+        Returns:
+            Agent-friendly error response
+        """
+        logger.error(f"Error: {error_message}, Context: {context}")
+        
+        # Create agent-friendly error summary
+        agent_summary = "Unable to generate insurance quote. "
+        
+        if "Missing required fields" in error_message:
+            agent_summary += f"The following information is needed: {context if isinstance(context, list) else error_message}"
+        elif "Failed to create policy" in error_message:
+            agent_summary += "The insurance system couldn't process this business information. Please verify all details are correct."
+        elif "Failed to calculate premium" in error_message:
+            agent_summary += "The premium calculation couldn't be completed. The business may require manual underwriting."
+        else:
+            agent_summary += f"Technical issue: {error_message}"
+        
         return {
             "success": False,
+            "summary": agent_summary,
             "proposalNo": None,
             "policyId": None,
-            "totalPremium": None,
-            "grossPremium": None,
-            "commission": None,
-            "commissionRate": None,
-            "glPremium": None,
-            "propertyPremium": None,
-            "effectiveDate": None,
-            "expiryDate": None,
-            "premiumBreakdown": None,
+            "premiums": None,
+            "coverage": None,
             "error": error_message,
-            "errorDetails": {
-                "type": "ProcessingError",
-                "message": error_message
-            }
+            "agentInstructions": "Inform the customer about the issue and offer to collect any missing information or try alternative options."
         }
 
 
@@ -847,19 +908,19 @@ def execute_tool(**kwargs) -> Dict[str, Any]:
     """
     Execute the InsureMO Rate Tool for platform integration.
     
-    This is the standard entry point for the Blueprint framework.
+    This is the standard entry point for the Blueprint framework and AI Agents.
     
     Args:
-        **kwargs: Tool input parameters matching the input_schema
+        **kwargs: Tool input parameters (can be raw JSON from agent)
         
     Returns:
-        Dict containing rating results matching the output_schema
+        Dict containing rating results optimized for agent consumption
     """
     with InsuremoRateTool() as tool:
         return tool.run_sync(**kwargs)
 
 
-# METADATA EXPORT AND TESTING
+# TESTING AND METADATA
 if __name__ == "__main__":
     # Export tool metadata for platform registration
     tool_metadata = {
@@ -879,22 +940,59 @@ if __name__ == "__main__":
     }
     
     print("\n" + "="*80)
-    print(" InsureMO Rate Tool - Blueprint-Compliant Commercial Insurance Rating")
+    print(" InsureMO Rate Tool - Agent-Optimized Version")
     print("="*80)
     print(f" Version: {InsuremoRateTool.version}")
-    print(f" Framework: Blueprint-Compliant with BaseTool inheritance")
+    print(f" Framework: Blueprint-Compliant with AI Agent Optimization")
     print("-"*80)
     
     print("\n📋 Tool Metadata:")
     print(json.dumps(tool_metadata, indent=2))
     
-    print("\n✅ Validation Fixes Applied:")
-    print("  - Simplified schema structure to avoid validation errors")
-    print("  - Added explicit default values handling")
-    print("  - Made all output fields nullable except 'success'")
-    print("  - Added additionalProperties: true for flexibility")
-    print("  - Improved error response structure")
+    print("\n✅ Agent Integration Features:")
+    print("  1. ✓ Accepts JSON input from AI Agents")
+    print("  2. ✓ Parses and sanitizes agent input")
+    print("  3. ✓ Sends appropriate parameters to InsureMO API")
+    print("  4. ✓ Returns agent-friendly JSON with summary")
+    
+    print("\n🚀 Key Improvements:")
+    print("  - Added parse_agent_input() method for robust JSON handling")
+    print("  - Enhanced error messages for agent understanding")
+    print("  - Added 'summary' field for easy agent summarization")
+    print("  - Included 'agentInstructions' for guidance")
+    print("  - Streamlined response structure for agent consumption")
+    
+    print("\n📝 Example Agent Input:")
+    example_input = {
+        "customerName": "ABC Bakery LLC",
+        "address1": "123 Main Street",
+        "city": "Austin",
+        "state": "TX",
+        "zipCode": "78701",
+        "businessType": "Retail",
+        "fullTimeEmpl": 10,
+        "buildingLimit": 750000
+    }
+    print(json.dumps(example_input, indent=2))
+    
+    print("\n📤 Example Agent Response Structure:")
+    example_response = {
+        "success": True,
+        "summary": "Successfully rated commercial insurance for ABC Bakery LLC. Proposal #P2024-001 created. Total Annual Premium: $5,234.00",
+        "proposalNo": "P2024-001",
+        "premiums": {
+            "total": 5234.00,
+            "generalLiability": 2500.00,
+            "property": 2734.00
+        },
+        "coverage": {
+            "effectiveDate": "2024-01-15",
+            "expiryDate": "2025-01-15",
+            "term": "Annual"
+        }
+    }
+    print(json.dumps(example_response, indent=2))
     
     print("\n" + "="*80)
-    print(" Tool ready for deployment!")
+    print(" Tool ready for AI Agent integration!")
     print("="*80)
