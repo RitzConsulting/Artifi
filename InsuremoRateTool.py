@@ -59,8 +59,8 @@ class InsuremoRateTool(BaseTool):
     
     # Environment variables required
     requires_env_vars = [
-        "INSUREMO_API_TOKEN: Bearer token for InsureMO API authentication",
-        "INSUREMO_BASE_URL: Base URL for InsureMO API (e.g., https://ebaogi-gi-sandbox-am.insuremo.com)"
+        "INSUREMO_API_TOKEN:MOATnRGmthYVAX1Dcrcve-WV8PEa0nds",
+        "INSUREMO_BASE_URL:https://ebaogi-gi-sandbox-am.insuremo.com"
     ]
     
     # Dependencies
@@ -336,7 +336,7 @@ class InsuremoRateTool(BaseTool):
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        
+
         # Set headers
         session.headers.update({
             "Authorization": f"Bearer {self.api_token}",
